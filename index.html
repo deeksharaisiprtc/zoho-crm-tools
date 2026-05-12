@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>8x8 Call Handler – Zoho CRM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --accent: #00d4aa;
+    --accent2: #ff6b35;
+    --warn: #f0a030;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --green: #3fb950;
+    --red: #f85149;
+    --blue: #58a6ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ─── Header ─── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), #0099ff);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; font-size: 13px;
+    color: #000;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  header p  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .status-dot {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--muted);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+  }
+
+  /* ─── Layout ─── */
+  main { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ─── Status Card ─── */
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .status-card h2 {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  }
+  .requirements {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .req-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .req-item .icon { font-size: 16px; flex-shrink: 0; }
+  .req-item span { flex: 1; }
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .badge.ok  { background: #1a3a27; color: var(--green); border: 1px solid #2d5a3d; }
+  .badge.req { background: #2a1f10; color: var(--warn); border: 1px solid #4a3820; }
+
+  /* ─── Flow Cards ─── */
+  .section-title {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 0;
+  }
+
+  .flow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .flow-card-header {
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .flow-card-header:hover { background: #222c3a; }
+  .flow-card-header h3 { font-size: 13px; font-weight: 600; flex: 1; }
+  .flow-card-header .tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600;
+  }
+  .tag.inbound  { background: #1a2a3a; color: var(--blue); border: 1px solid #2d4a6a; }
+  .tag.outbound { background: #2a1a2a; color: #c792ea; border: 1px solid #4a2a4a; }
+  .chevron { color: var(--muted); transition: transform 0.2s; font-size: 12px; }
+  .flow-card-body {
+    padding: 0 16px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease, padding 0.2s;
+  }
+  .flow-card-body.open {
+    max-height: 600px;
+    padding: 16px;
+  }
+  .flow-card-header.active .chevron { transform: rotate(180deg); }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step {
+    display: flex; gap: 12px; position: relative;
+  }
+  .step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px; top: 30px;
+    width: 2px; height: calc(100% - 6px);
+    background: var(--border);
+  }
+  .step-num {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    color: var(--accent);
+    flex-shrink: 0; z-index: 1;
+  }
+  .step-content { padding: 4px 0 20px; }
+  .step-content strong { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+  .step-content p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ─── Screen Pop Table ─── */
+  .pop-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1px;
+    background: var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .pop-cell {
+    background: var(--surface2);
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .pop-cell.header {
+    background: #1c2a1c;
+    color: var(--green);
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .pop-cell.label { color: var(--muted); font-weight: 500; }
+
+  /* ─── Call Log Info ─── */
+  .log-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--blue);
+  }
+
+  /* ─── Quick Ref ─── */
+  .quick-ref {
+    background: linear-gradient(135deg, #0d1f2d, #0d1a14);
+    border: 1px solid #1a3a2a;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .quick-ref h2 {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 12px;
+  }
+  .qr-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .qr-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: rgba(0,212,170,0.05);
+    border: 1px solid rgba(0,212,170,0.15);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .qr-icon { font-size: 18px; flex-shrink: 0; }
+  .qr-label { font-size: 12px; font-weight: 600; }
+  .qr-desc  { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+  /* ─── Note ─── */
+  .note {
+    background: #2a1f10;
+    border: 1px solid #4a3820;
+    border-left: 3px solid var(--warn);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #c8a060;
+    line-height: 1.5;
+  }
+  .note strong { color: var(--warn); }
+
+  footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">8x8</div>
+  <div>
+    <h1>8x8 Contact Center</h1>
+    <p>Zoho CRM Integration Guide</p>
+  </div>
+  <div class="status-dot">
+    <div class="dot"></div>
+    Available
+  </div>
+</header>
+
+<main>
+
+  <!-- Prerequisites -->
+  <div class="status-card">
+    <h2>Prerequisites to Handle Calls</h2>
+    <div class="requirements">
+      <div class="req-item">
+        <span class="icon">👥</span>
+        <span>Member of the routed call queue</span>
+        <span class="badge req">Required</span>
+      </div>
+      <div class="req-item">
+        <span class="icon">🟢</span>
+        <span>Status set to <strong>Available</strong></span>
+        <span class="badge req">Required</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inbound Flow -->
+  <div class="section-title">Call Flows</div>
+
+  <div class="flow-card">
+    <div class="flow-card-header" onclick="toggleCard(this)">
+      <span>📞</span>
+      <h3>Inbound Call Flow</h3>
+      <span class="tag inbound">Inbound</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="flow-card-body">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>Call Offered</strong>
+            <p>Phone rings. A call panel appears with caller info preview.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>Answer the Call</strong>
+            <p>Pick up. CRM searches for a matching customer record automatically.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>Screen Pop</strong>
+            <p>CRM record pops based on match result (see Screen Pop table below).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <strong>Add Notes (Optional)</strong>
+            <p>Select <em>Notes</em> under call controls → type in 8x8 section or scroll to Zoho CRM notes.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <strong>Hang Up</strong>
+            <p>Click <em>Hang up</em>. Post-processing time begins.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <strong>Disposition &amp; Wrap Up</strong>
+            <p>Select a disposition code if required, then click <em>Wrap up</em>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">7</div>
+          <div class="step-content">
+            <strong>Call Log Generated</strong>
+            <p>Automatic log with transaction ID, times, duration, tenant ID, and more.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>⚠ Note:</strong> If a call times out without being answered, the 8x8 app automatically changes your status to <em>On Break</em>.
+      </div>
+    </div>
+  </div>
+
+  <!-- Outbound Flow -->
+  <div class="flow-card">
+    <div class="flow-card-header" onclick="toggleCard(this)">
+      <span>📤</span>
+      <h3>Outbound Call Flow</h3>
+      <span class="tag outbound">Outbound</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="flow-card-body">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <strong>Option A – Contact Center App</strong>
+            <p>Dial directly from the 8x8 Contact Center app.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <strong>Option B – Click-to-Dial</strong>
+            <p>Click a phone number on any Contact, Lead, Account, or Vendor in Zoho CRM (if click-to-dial is configured).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <strong>Select Dialing Reason</strong>
+            <p>If phone codes are set up by your admin, select the dialing reason when prompted before the call connects.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen Pop -->
+  <div class="flow-card">
+    <div class="flow-card-header" onclick="toggleCard(this)">
+      <span>🖥</span>
+      <h3>Screen Pop Behavior</h3>
+      <span class="tag inbound">Reference</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="flow-card-body">
+      <div class="pop-grid">
+        <div class="pop-cell header">Match Result</div>
+        <div class="pop-cell header">What Happens</div>
+
+        <div class="pop-cell label">🔴 No Match</div>
+        <div class="pop-cell">No screen pop during call. After call ends, a log opens in a new tab — create a new Contact or Lead and assign the log.</div>
+
+        <div class="pop-cell label">🟢 Single Match</div>
+        <div class="pop-cell">Customer record pops immediately for preview. After call, log is auto-linked to that record.</div>
+
+        <div class="pop-cell label">🟡 Multiple Matches</div>
+        <div class="pop-cell">No auto pop. Match count shows on call panel. Click the avatar icon to manually select the right record. Log links to selected record (default: first in list).</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call Log -->
+  <div class="flow-card">
+    <div class="flow-card-header" onclick="toggleCard(this)">
+      <span>📋</span>
+      <h3>Call Log Details</h3>
+      <span class="tag inbound">Reference</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="flow-card-body">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Auto-generated after every call. Includes:</p>
+      <div class="log-chips">
+        <span class="chip">Transaction ID</span>
+        <span class="chip">Call Start Time</span>
+        <span class="chip">Call End Time</span>
+        <span class="chip">Duration</span>
+        <span class="chip">Tenant ID</span>
+        <span class="chip">Linked Record</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Reference -->
+  <div class="quick-ref">
+    <h2>⚡ Quick Reference</h2>
+    <div class="qr-grid">
+      <div class="qr-item">
+        <span class="qr-icon">🎯</span>
+        <div>
+          <div class="qr-label">Screen Pop</div>
+          <div class="qr-desc">CRM auto-pops matching record when a call comes in</div>
+        </div>
+      </div>
+      <div class="qr-item">
+        <span class="qr-icon">📝</span>
+        <div>
+          <div class="qr-label">Notes</div>
+          <div class="qr-desc">Use "Notes" under call controls; appears in call log comments</div>
+        </div>
+      </div>
+      <div class="qr-item">
+        <span class="qr-icon">🔀</span>
+        <div>
+          <div class="qr-label">Multiple Matches</div>
+          <div class="qr-desc">Click avatar on call panel to manually select the record</div>
+        </div>
+      </div>
+      <div class="qr-item">
+        <span class="qr-icon">✅</span>
+        <div>
+          <div class="qr-label">Wrap Up</div>
+          <div class="qr-desc">Always click Wrap Up after a call to finalise the log</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>8x8 Contact Center · Zoho CRM Integration · Agent Reference</footer>
+
+<script>
+  function toggleCard(header) {
+    const body = header.nextElementSibling;
+    const isOpen = body.classList.contains('open');
+    // close all
+    document.querySelectorAll('.flow-card-body').forEach(b => b.classList.remove('open'));
+    document.querySelectorAll('.flow-card-header').forEach(h => h.classList.remove('active'));
+    if (!isOpen) {
+      body.classList.add('open');
+      header.classList.add('active');
+    }
+  }
+
+  // Try to notify Zoho CRM that the widget is ready (if running inside Zoho)
+  try {
+    if (window.ZOHO && ZOHO.embeddedApp) {
+      ZOHO.embeddedApp.on("PageLoad", function(data) {
+        console.log("8x8 widget loaded in Zoho CRM", data);
+      });
+      ZOHO.embeddedApp.init();
+    }
+  } catch(e) {}
+</script>
+</body>
+</html>
